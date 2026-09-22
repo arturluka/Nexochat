@@ -69,6 +69,10 @@ São criadas as contas `aurora` e `leo`, com a senha escolhida. O seed não subs
 
 Para usar `npm start` localmente, rode `npm run build`, configure `APP_ORIGIN=http://localhost:3001` e abra essa URL. Use exatamente o hostname configurado: `localhost` e `127.0.0.1` são origens diferentes.
 
+## Novidades 0.3
+
+Loja com seis molduras, carteira de Faíscas, resgate diário grátis, coleção e extrato. Chamadas recebidas com aceitar/recusar, histórico, medidor de microfone, botão Ativar som e reconexão de mídia. Veja [como atualizar e testar o áudio](docs/UPDATE-0.3.md).
+
 ## Recursos implementados
 
 - Cadastro, login, logout, username único normalizado; Argon2id; cookies HttpOnly/SameSite; sessões revogáveis de 30 dias, com token aleatório armazenado apenas como hash.
@@ -89,7 +93,7 @@ Bloqueios impedem DMs e novas chamadas com a pessoa, ocultam suas mensagens em e
 
 ## Chamadas
 
-Entre na mesma conversa e clique no telefone. Escolha **Conversar**, **Só ouvir** ou **Usar PC com celular**. O modo Conversar tenta abrir o microfone; se ele estiver ausente ou a permissão for negada, você permanece ouvindo. Os outros dois modos não pedem microfone. Câmera e tela podem ser ligadas separadamente, ao mesmo tempo. Não há discagem com toque, convite de chamada ou chamada em segundo plano nesta MVP. A saída de áudio pode ser escolhida nas configurações quando o navegador oferece suporte; caso contrário, use o sistema operacional. A opção de áudio da tela depende do navegador, da origem capturada e da marcação de “Compartilhar áudio” no seletor nativo.
+Entre na mesma conversa e clique no telefone. Escolha **Conversar**, **Só ouvir** ou **Usar PC com celular**. O modo Conversar tenta abrir o microfone; se ele estiver ausente ou a permissão for negada, você permanece ouvindo. Os outros dois modos não pedem microfone. Câmera e tela podem ser ligadas separadamente, ao mesmo tempo. Em DMs e grupos, entrar na sala vazia toca para participantes disponíveis: aceitar, recusar ou aceitar só ouvindo. O convite expira em 45 segundos e fica no histórico. O toque depende de interação prévia com a página; chamadas com a página fechada ou aplicativo em segundo plano não têm push nesta MVP. A saída de áudio pode ser escolhida nas configurações quando o navegador oferece suporte; caso contrário, use o sistema operacional. A opção de áudio da tela depende do navegador, da origem capturada e da marcação de “Compartilhar áudio” no seletor nativo.
 
 Localhost é um contexto seguro para o navegador. Em outros dispositivos, microfone/câmera/tela exigem **HTTPS**. Para redes diferentes, configure um serviço **TURN** seu; STUN sozinho não garante conexão em todos os roteadores. Exemplo:
 

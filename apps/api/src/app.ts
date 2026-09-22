@@ -11,13 +11,15 @@ import multer from 'multer';
 import { Server } from 'socket.io';
 import { z } from 'zod';
 import { credentials, profile, messageInput, roomInput, permissions, username } from '@nexo/shared';
+import {shopService} from './shop.js';
+import {ringingService} from './ringing.js';
 import { type DB, dataDir, root } from './db.js';
 
 const uid = () => randomUUID();
 const hash = (s:string) => createHash('sha256').update(s).digest('hex');
 const id = z.string().uuid();
 const label = z.string().trim().min(1).max(60);
-const publicColumns = 'id,username,display_name,bio,avatar_id,status,banner_id,accent_color,pronouns,custom_status';
+const publicColumns = 'id,username,display_name,bio,avatar_id,status,banner_id,accent_color,pronouns,custom_status,equipped_frame';
 function fail(status:number, message:string):never { throw Object.assign(new Error(message),{status}); }
 type AuthRequest = Request & { user:any, session:any };
 export function createApp(db:DB) {
@@ -83,9 +85,20 @@ export function createApp(db:DB) {
    if(!await argon2.verify(u.password_hash,x.password)) fail(401,'Usuário ou senha incorretos');
    await issueSession(req,res,u);
  }));
- app.get('/api/health',(_req,res)=>res.json({ok:true,database:process.env.DATABASE_URL?'postgresql':'pglite'}));
+ app.get('/api/health',(_req,res)=>res.json({ok:true,version:'0.3.0',database:process.env.DATABASE_URL?'postgresql':'pglite'}));
  app.use('/api',auth);
  app.post('/api/auth/logout',route(async(req,res)=>{await db.query('DELETE FROM sessions WHERE id=$1',[req.session.id]); disconnectSession(req.session.id); res.clearCookie('nexo_session',{path:'/',httpOnly:true,sameSite:'lax',secure});res.json({ok:true});}));
+ const shop=shopService(db);const rings=ringingService(db,io,access,members,blocked);
+ const commerceLimit=rateLimit({windowMs:60_000,limit:20,keyGenerator:req=>(req as AuthRequest).user.id});
+ app.get('/api/shop',route(async(req,res)=>res.json(await shop.view(req.user.id))));
+ app.post('/api/shop/daily',commerceLimit,route(async(req,res)=>{res.json(await shop.daily(req.user.id));refresh();}));
+ app.post('/api/shop/buy',commerceLimit,route(async(req,res)=>{const x=z.object({item_id:z.string().min(1).max(30)}).strict().parse(req.body);res.json(await shop.buy(req.user.id,x.item_id));refresh();}));
+ app.post('/api/shop/equip',commerceLimit,route(async(req,res)=>{const x=z.object({item_id:z.string().max(30).nullable()}).strict().parse(req.body);res.json(await shop.equip(req.user.id,x.item_id));refresh();}));
+ const ringLimit=rateLimit({windowMs:60_000,limit:5,keyGenerator:req=>(req as AuthRequest).user.id});
+ app.post('/api/rooms/:id/ring',ringLimit,route(async(req,res)=>{res.json(await rings.start(req.user,id.parse(req.params.id),z.string().max(64).parse(req.body.socket_id)));refresh();}));
+ app.post('/api/rings/:id/respond',route(async(req,res)=>{res.json(await rings.respond(req.user.id,id.parse(req.params.id),z.enum(['accept','decline']).parse(req.body.action)));refresh();}));
+ app.delete('/api/rings/:id',route(async(req,res)=>res.json(await rings.cancel(req.user.id,id.parse(req.params.id)))));
+ app.get('/api/calls/history',route(async(req,res)=>res.json(await rings.history(req.user.id))));
  app.get('/api/state',route(async(req,res)=>{
    const me=req.user;
    const rooms=await db.query(`SELECT DISTINCT r.*,rm.muted,rm.last_read_at,
@@ -95,11 +108,11 @@ export function createApp(db:DB) {
      WHERE (rm.user_id IS NOT NULL AND r.server_id IS NULL OR sm.user_id IS NOT NULL AND NOT sm.banned) AND (r.expires_at IS NULL OR r.expires_at>now()) ORDER BY r.created_at`,[me.id]);
    const servers=await db.query('SELECT s.*,m.role_id,COALESCE(r.permissions,\'["send","invite"]\'::jsonb) AS permissions FROM servers s JOIN server_members m ON m.server_id=s.id LEFT JOIN roles r ON r.id=m.role_id WHERE m.user_id=$1 AND NOT m.banned ORDER BY s.created_at',[me.id]);
    const relations=await db.query(`SELECT rel.*,u.username,u.display_name,u.avatar_id,u.status,u.id AS user_id FROM relations rel JOIN users u ON u.id=CASE WHEN rel.sender=$1 THEN rel.recipient ELSE rel.sender END WHERE (rel.sender=$1 OR rel.recipient=$1) AND (rel.state<>'blocked' OR rel.sender=$1)`,[me.id]);
-   const users=await db.query(`SELECT DISTINCT u.id,u.username,u.display_name,u.bio,u.avatar_id,u.status,u.banner_id,u.accent_color,u.pronouns,u.custom_status FROM users u WHERE u.id=$1 OR EXISTS(SELECT 1 FROM relations r WHERE (r.sender=$1 AND r.recipient=u.id OR r.recipient=$1 AND r.sender=u.id) AND r.state<>'blocked') OR EXISTS(SELECT 1 FROM room_members a JOIN room_members b ON a.room_id=b.room_id WHERE a.user_id=$1 AND b.user_id=u.id) OR EXISTS(SELECT 1 FROM server_members a JOIN server_members b ON a.server_id=b.server_id WHERE a.user_id=$1 AND b.user_id=u.id AND NOT a.banned AND NOT b.banned)`,[me.id]);
+   const users=await db.query(`SELECT DISTINCT u.id,u.username,u.display_name,u.bio,u.avatar_id,u.status,u.banner_id,u.accent_color,u.pronouns,u.custom_status,u.equipped_frame FROM users u WHERE u.id=$1 OR EXISTS(SELECT 1 FROM relations r WHERE (r.sender=$1 AND r.recipient=u.id OR r.recipient=$1 AND r.sender=u.id) AND r.state<>'blocked') OR EXISTS(SELECT 1 FROM room_members a JOIN room_members b ON a.room_id=b.room_id WHERE a.user_id=$1 AND b.user_id=u.id) OR EXISTS(SELECT 1 FROM server_members a JOIN server_members b ON a.server_id=b.server_id WHERE a.user_id=$1 AND b.user_id=u.id AND NOT a.banned AND NOT b.banned)`,[me.id]);
    for(const u of users) if(u.status==='invisible'||!online(u.id)||await blocked(me.id,u.id)) u.status='offline';
    const categories=await db.query('SELECT c.* FROM categories c JOIN server_members m ON m.server_id=c.server_id WHERE m.user_id=$1 AND NOT m.banned',[me.id]);
    const notifications=await db.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 80',[me.id]);
-   res.json({me:{id:me.id,username:me.username,display_name:me.display_name,bio:me.bio,avatar_id:me.avatar_id,status:me.status,dm_policy:me.dm_policy,read_receipts:me.read_receipts,banner_id:me.banner_id,accent_color:me.accent_color,pronouns:me.pronouns,custom_status:me.custom_status},rooms,servers,relations,users,categories,notifications});
+   res.json({me:{id:me.id,username:me.username,display_name:me.display_name,bio:me.bio,avatar_id:me.avatar_id,status:me.status,dm_policy:me.dm_policy,read_receipts:me.read_receipts,banner_id:me.banner_id,accent_color:me.accent_color,pronouns:me.pronouns,custom_status:me.custom_status,equipped_frame:me.equipped_frame,sparks:me.sparks},rooms,servers,relations,users,categories,notifications});
  }));
  app.patch('/api/profile',route(async(req,res)=>{
    const x=profile.parse(req.body);
@@ -160,26 +173,27 @@ export function createApp(db:DB) {
    const aid=uid();await mkdir(path.join(dataDir,'uploads'),{recursive:true});await writeFile(path.join(dataDir,'uploads',aid),b);try{await db.query('INSERT INTO attachments(id,owner_id,room_id,name,mime,size) VALUES($1,$2,$3,$4,$5,$6)',[aid,req.user.id,room,path.basename(file.originalname).slice(0,120),mime,file.size]);}catch(e){await unlink(path.join(dataDir,'uploads',aid));throw e;}res.json({id:aid,name:file.originalname,mime});
  }));
  app.get('/api/files/:id',route(async(req,res)=>{const a=await first('SELECT * FROM attachments WHERE id=$1',[id.parse(req.params.id)]);if(!a)fail(404,'Arquivo não encontrado');if(a.room_id){await access(req.user.id,a.room_id);if(await blocked(req.user.id,a.owner_id))fail(403,'Arquivo indisponível');if(a.owner_id!==req.user.id&&!await first('SELECT 1 FROM messages WHERE attachment_id=$1 AND NOT deleted',[a.id]))fail(403,'Arquivo não publicado');}else if(a.owner_id!==req.user.id&&!await first('SELECT 1 FROM users WHERE avatar_id=$1 OR banner_id=$1',[a.id]))fail(403,'Arquivo privado');res.setHeader('Cache-Control','private, no-store');res.type(a.mime);if(!a.mime.startsWith('image/'))res.attachment(a.name);res.send(await readFile(path.join(dataDir,'uploads',a.id)));}));
- app.get('/api/rtc-config',(_req,res)=>res.json({iceServers:JSON.parse(process.env.ICE_SERVERS||'[{"urls":"stun:stun.l.google.com:19302"}]'),maxPeers:6}));
+ app.get('/api/rtc-config',(_req,res)=>{const iceServers=JSON.parse(process.env.ICE_SERVERS||'[{"urls":"stun:stun.l.google.com:19302"}]');const turnConfigured=iceServers.some((s:any)=>[s.urls].flat().some((u:string)=>/^turns?:/.test(u)));res.json({iceServers,maxPeers:6,turnConfigured});});
 
  async function evictRoom(room:string,user?:string) { for(const s of io.sockets.sockets.values()){if(user&&s.data.user.id!==user)continue;if(s.data.call===room)await leaveCall(s);await s.leave('room:'+room);s.emit('access-changed');} }
- async function leaveCall(s:any){const room=s.data.call;if(room){s.to('call:'+room).emit('call-left',{peer:s.id,room});await s.leave('call:'+room);s.data.call=null;s.emit('call-ended',{room,token:s.data.callToken});}}
+ async function leaveCall(s:any){const room=s.data.call;if(room){await rings.cancelSocket(s.id);s.to('call:'+room).emit('call-left',{peer:s.id,room});await s.leave('call:'+room);s.data.call=null;s.emit('call-ended',{room,token:s.data.callToken});}}
  io.use(async(s,next)=>{try{const u=await authenticate(s.request.headers.cookie);if(!u)return next(new Error('Sessão inválida'));s.data.user=u;s.data.session=u.session_id;next();}catch{next(new Error('Sessão inválida'));}});
  io.on('connection',s=>{
-   s.join('user:'+s.data.user.id);refresh();let count=0;let reset=Date.now();
+   s.join('user:'+s.data.user.id);for(const ring of rings.sync(s.data.user.id))s.emit('ring-incoming',ring);refresh();let count=0;let reset=Date.now();
    s.use(async(_packet,next)=>{try{if(Date.now()-reset>10_000){count=0;reset=Date.now();}if(++count>150)throw new Error('Limite de eventos excedido');const u=await authenticate(s.request.headers.cookie);if(!u){s.disconnect(true);return;}s.data.user=u;next();}catch(e){next(e as Error);}});
    const event=(name:string,handler:(p:any)=>Promise<any>)=>s.on(name,async(p,ack)=>{try{const execute=async()=>{if(!s.connected)fail(401,'Conexão encerrada');return handler(p);};const result=await (['call-join','call-leave'].includes(name)?serializeCall(execute):execute());if(typeof ack==='function')ack({ok:true,...result});}catch(e:any){if(typeof ack==='function')ack({ok:false,error:e.message});}});
    event('watch',async(p)=>{const r=await access(s.data.user.id,id.parse(p.room));for(const old of s.rooms)if(old.startsWith('room:'))await s.leave(old);await s.join('room:'+r.id);return {};});
    event('typing',async(p)=>{const r=await access(s.data.user.id,id.parse(p.room),'send');s.to('room:'+r.id).emit('typing',{room:r.id,user_id:s.data.user.id,name:s.data.user.display_name});return {};});
-   event('call-join',async(p)=>{const r=await access(s.data.user.id,id.parse(p.room));const peers=[...io.sockets.sockets.values()].filter(x=>x.data.call===r.id&&x.id!==s.id);if(peers.length>=6)fail(400,'Sala cheia: até 6 participantes');for(const peer of peers)if(await blocked(peer.data.user.id,s.data.user.id))fail(403,'Chamada indisponível por bloqueio');await leaveCall(s);s.data.call=r.id;s.data.callToken=p.token===undefined?undefined:id.parse(p.token);s.data.media={mic:false,camera:false,screen:false,screenAudio:false,deaf:false};await s.join('call:'+r.id);return {peers:peers.map(x=>({id:x.id,name:x.data.user.display_name,user_id:x.data.user.id,media:x.data.media}))};});
-   event('signal',async(p)=>{const x=z.object({to:z.string().max(64),description:z.object({type:z.enum(['offer','answer']),sdp:z.string().max(50000)}).optional(),candidate:z.any().optional()}).parse(p);const target=io.sockets.sockets.get(x.to);if(!s.data.call||!target||target.data.call!==s.data.call)fail(403,'Sinalização fora da chamada');await access(s.data.user.id,s.data.call);await access(target.data.user.id,s.data.call);target.emit('signal',{from:s.id,name:s.data.user.display_name,user_id:s.data.user.id,media:s.data.media,description:x.description,candidate:x.candidate});return {};});
+   event('call-join',async(p)=>{const r=await access(s.data.user.id,id.parse(p.room));const peers=[...io.sockets.sockets.values()].filter(x=>x.data.call===r.id&&x.id!==s.id);if(peers.length>=6)fail(400,'Sala cheia: até 6 participantes');for(const peer of peers)if(await blocked(peer.data.user.id,s.data.user.id))fail(403,'Chamada indisponível por bloqueio');await leaveCall(s);s.data.call=r.id;s.data.callToken=p.token===undefined?undefined:id.parse(p.token);s.data.media={mic:false,camera:false,screen:false,screenAudio:false,deaf:false};await s.join('call:'+r.id);await rings.joined(s.data.user.id,r.id);return {peers:peers.map(x=>({id:x.id,name:x.data.user.display_name,user_id:x.data.user.id,media:x.data.media}))};});
+   event('signal',async(p)=>{const x=z.object({to:z.string().max(64),description:z.object({type:z.enum(['offer','answer']),sdp:z.string().max(50000)}).optional(),candidate:z.any().optional(),restart:z.boolean().optional()}).parse(p);const target=io.sockets.sockets.get(x.to);if(!s.data.call||!target||target.data.call!==s.data.call)fail(403,'Sinalização fora da chamada');await access(s.data.user.id,s.data.call);await access(target.data.user.id,s.data.call);target.emit('signal',{from:s.id,name:s.data.user.display_name,user_id:s.data.user.id,media:s.data.media,description:x.description,candidate:x.candidate,restart:x.restart});return {};});
    event('call-state',async(p)=>{if(!s.data.call)fail(403,'Entre em uma chamada');await access(s.data.user.id,s.data.call);s.data.media=z.object({mic:z.boolean(),camera:z.boolean(),screen:z.boolean(),screenAudio:z.boolean(),deaf:z.boolean()}).parse(p);s.to('call:'+s.data.call).emit('call-state',{peer:s.id,user_id:s.data.user.id,media:s.data.media});return {};});
    event('call-leave',async(p)=>{if((!p?.room||p.room===s.data.call)&&(!p?.token||p.token===s.data.callToken))await leaveCall(s);return {};});
    s.on('disconnect',()=>{void serializeCall(()=>leaveCall(s)).catch(console.error);refresh();});
  });
+ const ringSweep=setInterval(()=>{void rings.expire().catch(console.error);},1000);ringSweep.unref();
  const sweep=setInterval(()=>{void (async()=>{for(const s of io.sockets.sockets.values()){if(!await authenticate(s.request.headers.cookie)){s.disconnect(true);continue;}if(s.data.call)try{await access(s.data.user.id,s.data.call);}catch{await leaveCall(s);}}await db.query('DELETE FROM sessions WHERE expires_at<now()');await db.query('DELETE FROM rooms WHERE expires_at<now()');})().catch(console.error);},30_000);sweep.unref();
  app.use(express.static(path.join(root,'apps/web/dist')));
  app.get('/{*path}',(req,res,next)=>{if(req.path.startsWith('/api/'))return res.status(404).json({error:'Rota não encontrada'});res.sendFile(path.join(root,'apps/web/dist/index.html'),e=>{if(e)next(e);});});
  app.use((err:any,_req:Request,res:Response,_next:NextFunction)=>{if(err instanceof z.ZodError)return res.status(400).json({error:err.issues.map(x=>x.message).join('; ')});if(err.code==='23505')return res.status(409).json({error:'Já existe um registro com esses dados'});if(err instanceof multer.MulterError)return res.status(400).json({error:'Arquivo inválido ou maior que 10 MB'});if(err.code==='23503')return res.status(400).json({error:'Referência inválida'});if(err.status)return res.status(err.status).json({error:err.message});console.error(err);res.status(500).json({error:'Falha interna. Tente novamente.'});});
- return {app,http,io,close:async()=>{clearInterval(sweep);await new Promise<void>(resolve=>io.close(()=>resolve()));await db.close();}};
+ return {app,http,io,close:async()=>{clearInterval(sweep);clearInterval(ringSweep);await new Promise<void>(resolve=>io.close(()=>resolve()));await db.close();}};
 }

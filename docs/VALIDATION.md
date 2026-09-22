@@ -1,5 +1,11 @@
 # Validação executada
 
+## Atualização 0.3
+
+Build e testes de integração passaram. O teste de navegador passou com duas contas e um terceiro dispositivo na mesma conta. Foram verificados: convite recebido e aceito antes de abrir o microfone; recusa/cancelamento e histórico via API; rejeição de resposta por terceiro; resgate diário simultâneo com apenas um crédito; compra simultânea com apenas um débito; rejeição de preço forjado e moldura não adquirida; reaplicação da migration sem perder a carteira; compra/equipamento pela interface e ausência de overflow no celular; habilitação explícita de áudio entre dispositivos da mesma conta.
+
+Os fluxos anteriores de mensagens, perfis, mídia WebRTC, câmera e tela simultâneas, ausência de microfone e saída independente também passaram. Microfone/câmera continuam simulados e a tela usa canvas sintético, com transporte WebRTC real. O teste não confirma o alto-falante/microfone do celular físico do usuário, Safari/iOS, TURN ou chamadas com o navegador fechado.
+
 ## Atualização 0.2 — resultado final
 
 `npm run build` e `npm test` passaram após a atualização. `node tests/browser.mjs` passou com duas contas e um terceiro contexto de navegador usando a mesma conta, em viewport de celular.

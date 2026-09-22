@@ -2,7 +2,7 @@ import type {Socket} from 'socket.io-client';
 import {api} from './api';
 export type JoinMode='voice'|'listen'|'companion';
 export type MediaState={mic:boolean;camera:boolean;screen:boolean;screenAudio:boolean;deaf:boolean};
-export type RemotePeer={id:string;name:string;user_id:string;pc:RTCPeerConnection;camera:MediaStream;screen:MediaStream;audio:MediaStream;screenAudio:MediaStream;media:MediaState;connection:string;pending:RTCIceCandidateInit[];queue:Promise<void>};
+export type RemotePeer={id:string;name:string;user_id:string;pc:RTCPeerConnection;camera:MediaStream;screen:MediaStream;audio:MediaStream;screenAudio:MediaStream;media:MediaState;connection:string;initiator:boolean;retries:number;audioReceived:number;audioSent:number;pending:RTCIceCandidateInit[];queue:Promise<void>};
 const emptyMedia=():MediaState=>({mic:false,camera:false,screen:false,screenAudio:false,deaf:false});
 // Permanent slots: microphone, camera, screen video, screen audio. Even listeners
 // negotiate sendrecv slots, so enabling a device later only needs replaceTrack.
@@ -10,7 +10,7 @@ export class CallEngine {
  private readonly token=crypto.randomUUID();
  readonly peers=new Map<string,RemotePeer>();
  readonly tracks:(MediaStreamTrack|null)[]=[null,null,null,null];
- media=emptyMedia(); ready=false; disposed=false; note='';
+ media=emptyMedia(); turnConfigured=false; ready=false; disposed=false; note='';
  private config:RTCConfiguration={}; private joined=false;private joining=false;
  constructor(readonly socket:Socket,readonly room:string,readonly mode:JoinMode,readonly changed:()=>void,readonly error:(message:string)=>void,readonly ended:()=>void){this.media.deaf=mode==='companion';}
  private emit(name:string,data:any):Promise<any>{return new Promise((resolve,reject)=>this.socket.timeout(7000).emit(name,data,(error:any,r:any)=>error?reject(new Error('Sem resposta da chamada. Tente entrar novamente.')):r?.ok?resolve(r):reject(new Error(r?.error||'Falha na chamada'))));}
@@ -19,9 +19,9 @@ export class CallEngine {
  private send(to:string,payload:any){if(!this.disposed)void this.emit('signal',{to,...payload}).catch(e=>{if(!this.disposed)this.error(e.message);});}
  private createPeer(id:string,name:string,user_id:string,media?:MediaState){
   const existing=this.peers.get(id);if(existing)return existing;
-  const pc=new RTCPeerConnection(this.config);const p:RemotePeer={id,name,user_id,pc,camera:new MediaStream(),screen:new MediaStream(),audio:new MediaStream(),screenAudio:new MediaStream(),media:media||emptyMedia(),connection:'connecting',pending:[],queue:Promise.resolve()};this.peers.set(id,p);
+  const pc=new RTCPeerConnection(this.config);const p:RemotePeer={id,name,user_id,pc,camera:new MediaStream(),screen:new MediaStream(),audio:new MediaStream(),screenAudio:new MediaStream(),media:media||emptyMedia(),connection:'connecting',initiator:false,retries:0,audioReceived:0,audioSent:0,pending:[],queue:Promise.resolve()};this.peers.set(id,p);
   pc.onicecandidate=e=>{if(e.candidate)this.send(id,{candidate:e.candidate.toJSON()});};
-  pc.onconnectionstatechange=()=>{p.connection=pc.connectionState;this.update();if(pc.connectionState==='failed')this.error('A conexão com '+name+' falhou. Saia e entre novamente; redes restritivas podem precisar de TURN.');};
+  pc.onconnectionstatechange=()=>{p.connection=pc.connectionState;this.update();if(pc.connectionState==='failed'&&p.initiator&&p.retries<2){void this.restartPeer(p);return;}if(pc.connectionState==='failed')this.error('A conexão com '+name+' falhou. Saia e entre novamente; redes restritivas podem precisar de TURN.');};
   pc.ontrack=e=>{const slot=pc.getTransceivers().indexOf(e.transceiver);const stream=[p.audio,p.camera,p.screen,p.screenAudio][slot];if(!stream)return;for(const old of stream.getTracks())stream.removeTrack(old);stream.addTrack(e.track);e.track.onunmute=()=>this.update();e.track.onmute=()=>this.update();this.update();};
   this.update();return p;
  }
@@ -30,6 +30,7 @@ export class CallEngine {
   if(this.disposed)return;const p=this.createPeer(data.from,data.name,data.user_id,data.media);if(data.media)p.media=data.media;
   p.queue=p.queue.then(async()=>{
    if(this.disposed||p.pc.signalingState==='closed')return;
+   if(data.restart){if(p.initiator)await this.restartPeer(p);return;}
    if(data.description){await p.pc.setRemoteDescription(data.description);for(const candidate of p.pending)await p.pc.addIceCandidate(candidate);p.pending=[];
     if(data.description.type==='offer'){await this.attach(p);await p.pc.setLocalDescription(await p.pc.createAnswer());this.send(p.id,{description:p.pc.localDescription});}
    }else if(data.candidate){if(p.pc.remoteDescription)await p.pc.addIceCandidate(data.candidate);else p.pending.push(data.candidate);}
@@ -42,17 +43,20 @@ export class CallEngine {
  private callEnded=(data:any)=>{if((!data?.room||data.room===this.room)&&(!data?.token||data.token===this.token))this.lost();};
  async start(){
   try{
-   this.config=await api('/rtc-config');if(this.disposed)return;
+   const settings=await api('/rtc-config');this.config={iceServers:settings.iceServers};this.turnConfigured=!!settings.turnConfigured;if(this.disposed)return;
    if(this.mode==='voice')try{await this.microphone('');}catch{this.note='Microfone indisponível ou sem permissão. Você entrou só para ouvir; a tela e a câmera continuam disponíveis.';}
    if(this.disposed)return;
    this.socket.on('signal',this.receive);this.socket.on('call-state',this.peerState);this.socket.on('call-left',this.peerLeft);this.socket.on('disconnect',this.lost);this.socket.on('call-ended',this.callEnded);
    this.joining=true;const result=await this.emit('call-join',{room:this.room,token:this.token});this.joining=false;if(this.disposed)return;
    this.joined=true;this.ready=true;this.publish();
    // Only the newcomer offers; existing sockets answer using the offered slots.
-   for(const info of result.peers){if(this.disposed)return;const p=this.createPeer(info.id,info.name,info.user_id,info.media);for(const [slot,kind] of ['audio','video','video','audio'].entries())p.pc.addTransceiver(this.tracks[slot]||kind,{direction:'sendrecv'});await p.pc.setLocalDescription(await p.pc.createOffer());this.send(p.id,{description:p.pc.localDescription});}
+   for(const info of result.peers){if(this.disposed)return;const p=this.createPeer(info.id,info.name,info.user_id,info.media);p.initiator=true;for(const [slot,kind] of ['audio','video','video','audio'].entries())p.pc.addTransceiver(this.tracks[slot]||kind,{direction:'sendrecv'});await p.pc.setLocalDescription(await p.pc.createOffer());this.send(p.id,{description:p.pc.localDescription});}
    this.update();
   }catch(e:any){if(!this.disposed){this.error(e.message);this.ended();}}
  }
+ private async restartPeer(p:RemotePeer){if(this.disposed||p.pc.signalingState!=='stable')return;p.retries++;try{await p.pc.setLocalDescription(await p.pc.createOffer({iceRestart:true}));this.send(p.id,{description:p.pc.localDescription});}catch(e:any){if(!this.disposed)this.error(e.message);}}
+ async reconnect(){for(const p of this.peers.values()){if(p.initiator)await this.restartPeer(p);else this.send(p.id,{restart:true});}}
+ async stats(){for(const p of this.peers.values()){if(p.pc.signalingState==='closed')continue;try{let rx=0,tx=0;for(const stat of (await p.pc.getStats()).values()){if(stat.kind==='audio'&&stat.type==='inbound-rtp')rx+=stat.bytesReceived||0;if(stat.kind==='audio'&&stat.type==='outbound-rtp')tx+=stat.bytesSent||0;}p.audioReceived=rx;p.audioSent=tx;}catch{}}this.update();}
  private async replace(slot:number,track:MediaStreamTrack|null){
   if(this.disposed){track?.stop();return;}
   const previous=this.tracks[slot];const replaced:RTCRtpSender[]=[];
