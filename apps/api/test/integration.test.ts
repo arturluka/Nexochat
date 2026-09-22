@@ -87,6 +87,19 @@ test('contas, sessões, amizades, mensagens, uploads, permissões e sinalizaçã
   assert.equal(calls.find((r:any)=>r.id===third.rings[0].id).status,'cancelled');
   assert.ok(calls.some((r:any)=>r.status==='accepted'));assert.ok(calls.some((r:any)=>r.status==='declined'));
   assert.equal((await req('carol','/calls/history')).length,0);
-  console.log('Fluxos principais, compras concorrentes e convites de chamada validados.');
+  await req('alice','/badges/claim','POST',{badge_id:'regular'},403);
+  await req('alice','/badges/display','POST',{ids:['admin']},403);
+  const awards=await Promise.all([1,2].map(()=>fetch(base+'/api/badges/claim',{method:'POST',headers:{Cookie:cookies.alice,Origin:'http://localhost:5173','Content-Type':'application/json'},body:JSON.stringify({badge_id:'arrival'})})));
+  assert.deepEqual(awards.map(r=>r.status).sort(),[200,409]);
+  for(const badge_id of ['community','style'])await req('alice','/badges/claim','POST',{badge_id});
+  await req('alice','/badges/display','POST',{ids:['arrival','community','style','regular']},400);
+  await req('alice','/badges/display','POST',{ids:['arrival','arrival']},400);
+  await req('alice','/badges/display','POST',{ids:['style','arrival','community']});
+  await migrate(db);const badges=await req('alice','/badges');assert.equal(badges.items.filter((b:any)=>b.earned_at).length,3);
+  assert.deepEqual((await req('alice','/state')).me.displayed_badges,['style','arrival','community']);
+  assert.equal((await req('alice','/shop')).sparks,125);
+  assert.deepEqual((await req('bobby','/state')).users.find((u:any)=>u.id===alice.id).displayed_badges,['style','arrival','community']);
+  await req('alice','/badges/display','POST',{ids:[]});assert.equal((await req('alice','/badges')).items.filter((b:any)=>b.earned_at).length,3);
+  console.log('PASS: conquistas, crédito único concorrente, bloqueios, limite e ordem de insígnias, persistência e exibição pública.');
  }finally{for(const s of sockets)s.disconnect();await svc.close();await rm(dir,{recursive:true,force:true});}
 });

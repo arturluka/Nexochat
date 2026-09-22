@@ -11,6 +11,7 @@ import multer from 'multer';
 import { Server } from 'socket.io';
 import { z } from 'zod';
 import { credentials, profile, messageInput, roomInput, permissions, username } from '@nexo/shared';
+import {badgeService} from './badges.js';
 import {shopService} from './shop.js';
 import {ringingService} from './ringing.js';
 import { type DB, dataDir, root } from './db.js';
@@ -19,7 +20,7 @@ const uid = () => randomUUID();
 const hash = (s:string) => createHash('sha256').update(s).digest('hex');
 const id = z.string().uuid();
 const label = z.string().trim().min(1).max(60);
-const publicColumns = 'id,username,display_name,bio,avatar_id,status,banner_id,accent_color,pronouns,custom_status,equipped_frame';
+const publicColumns = 'id,username,display_name,bio,avatar_id,status,banner_id,accent_color,pronouns,custom_status,equipped_frame,displayed_badges';
 function fail(status:number, message:string):never { throw Object.assign(new Error(message),{status}); }
 type AuthRequest = Request & { user:any, session:any };
 export function createApp(db:DB) {
@@ -85,11 +86,15 @@ export function createApp(db:DB) {
    if(!await argon2.verify(u.password_hash,x.password)) fail(401,'Usuário ou senha incorretos');
    await issueSession(req,res,u);
  }));
- app.get('/api/health',(_req,res)=>res.json({ok:true,version:'0.3.0',database:process.env.DATABASE_URL?'postgresql':'pglite'}));
+ app.get('/api/health',(_req,res)=>res.json({ok:true,version:'0.4.0',database:process.env.DATABASE_URL?'postgresql':'pglite'}));
  app.use('/api',auth);
  app.post('/api/auth/logout',route(async(req,res)=>{await db.query('DELETE FROM sessions WHERE id=$1',[req.session.id]); disconnectSession(req.session.id); res.clearCookie('nexo_session',{path:'/',httpOnly:true,sameSite:'lax',secure});res.json({ok:true});}));
+ const badges=badgeService(db);
  const shop=shopService(db);const rings=ringingService(db,io,access,members,blocked);
  const commerceLimit=rateLimit({windowMs:60_000,limit:20,keyGenerator:req=>(req as AuthRequest).user.id});
+ app.get('/api/badges',route(async(req,res)=>res.json(await badges.view(req.user.id))));
+ app.post('/api/badges/claim',commerceLimit,route(async(req,res)=>{const x=z.object({badge_id:z.string().max(30)}).strict().parse(req.body);res.json(await badges.claim(req.user.id,x.badge_id));refresh();}));
+ app.post('/api/badges/display',commerceLimit,route(async(req,res)=>{const x=z.object({ids:z.array(z.string().max(30)).max(3).refine(a=>new Set(a).size===a.length)}).strict().parse(req.body);res.json(await badges.display(req.user.id,x.ids));refresh();}));
  app.get('/api/shop',route(async(req,res)=>res.json(await shop.view(req.user.id))));
  app.post('/api/shop/daily',commerceLimit,route(async(req,res)=>{res.json(await shop.daily(req.user.id));refresh();}));
  app.post('/api/shop/buy',commerceLimit,route(async(req,res)=>{const x=z.object({item_id:z.string().min(1).max(30)}).strict().parse(req.body);res.json(await shop.buy(req.user.id,x.item_id));refresh();}));
@@ -108,11 +113,11 @@ export function createApp(db:DB) {
      WHERE (rm.user_id IS NOT NULL AND r.server_id IS NULL OR sm.user_id IS NOT NULL AND NOT sm.banned) AND (r.expires_at IS NULL OR r.expires_at>now()) ORDER BY r.created_at`,[me.id]);
    const servers=await db.query('SELECT s.*,m.role_id,COALESCE(r.permissions,\'["send","invite"]\'::jsonb) AS permissions FROM servers s JOIN server_members m ON m.server_id=s.id LEFT JOIN roles r ON r.id=m.role_id WHERE m.user_id=$1 AND NOT m.banned ORDER BY s.created_at',[me.id]);
    const relations=await db.query(`SELECT rel.*,u.username,u.display_name,u.avatar_id,u.status,u.id AS user_id FROM relations rel JOIN users u ON u.id=CASE WHEN rel.sender=$1 THEN rel.recipient ELSE rel.sender END WHERE (rel.sender=$1 OR rel.recipient=$1) AND (rel.state<>'blocked' OR rel.sender=$1)`,[me.id]);
-   const users=await db.query(`SELECT DISTINCT u.id,u.username,u.display_name,u.bio,u.avatar_id,u.status,u.banner_id,u.accent_color,u.pronouns,u.custom_status,u.equipped_frame FROM users u WHERE u.id=$1 OR EXISTS(SELECT 1 FROM relations r WHERE (r.sender=$1 AND r.recipient=u.id OR r.recipient=$1 AND r.sender=u.id) AND r.state<>'blocked') OR EXISTS(SELECT 1 FROM room_members a JOIN room_members b ON a.room_id=b.room_id WHERE a.user_id=$1 AND b.user_id=u.id) OR EXISTS(SELECT 1 FROM server_members a JOIN server_members b ON a.server_id=b.server_id WHERE a.user_id=$1 AND b.user_id=u.id AND NOT a.banned AND NOT b.banned)`,[me.id]);
+   const users=await db.query(`SELECT DISTINCT u.id,u.username,u.display_name,u.bio,u.avatar_id,u.status,u.banner_id,u.accent_color,u.pronouns,u.custom_status,u.equipped_frame,u.displayed_badges FROM users u WHERE u.id=$1 OR EXISTS(SELECT 1 FROM relations r WHERE (r.sender=$1 AND r.recipient=u.id OR r.recipient=$1 AND r.sender=u.id) AND r.state<>'blocked') OR EXISTS(SELECT 1 FROM room_members a JOIN room_members b ON a.room_id=b.room_id WHERE a.user_id=$1 AND b.user_id=u.id) OR EXISTS(SELECT 1 FROM server_members a JOIN server_members b ON a.server_id=b.server_id WHERE a.user_id=$1 AND b.user_id=u.id AND NOT a.banned AND NOT b.banned)`,[me.id]);
    for(const u of users) if(u.status==='invisible'||!online(u.id)||await blocked(me.id,u.id)) u.status='offline';
    const categories=await db.query('SELECT c.* FROM categories c JOIN server_members m ON m.server_id=c.server_id WHERE m.user_id=$1 AND NOT m.banned',[me.id]);
    const notifications=await db.query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 80',[me.id]);
-   res.json({me:{id:me.id,username:me.username,display_name:me.display_name,bio:me.bio,avatar_id:me.avatar_id,status:me.status,dm_policy:me.dm_policy,read_receipts:me.read_receipts,banner_id:me.banner_id,accent_color:me.accent_color,pronouns:me.pronouns,custom_status:me.custom_status,equipped_frame:me.equipped_frame,sparks:me.sparks},rooms,servers,relations,users,categories,notifications});
+   res.json({me:{id:me.id,username:me.username,display_name:me.display_name,bio:me.bio,avatar_id:me.avatar_id,status:me.status,dm_policy:me.dm_policy,read_receipts:me.read_receipts,banner_id:me.banner_id,accent_color:me.accent_color,pronouns:me.pronouns,custom_status:me.custom_status,equipped_frame:me.equipped_frame,sparks:me.sparks,displayed_badges:me.displayed_badges},rooms,servers,relations,users,categories,notifications});
  }));
  app.patch('/api/profile',route(async(req,res)=>{
    const x=profile.parse(req.body);

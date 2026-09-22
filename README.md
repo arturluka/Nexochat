@@ -1,4 +1,4 @@
-# NexoChat 0.2
+# NexoChat 0.4
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
@@ -68,6 +68,10 @@ São criadas as contas `aurora` e `leo`, com a senha escolhida. O seed não subs
 | `npm run db:seed` | Criar duas contas opcionais |
 
 Para usar `npm start` localmente, rode `npm run build`, configure `APP_ORIGIN=http://localhost:3001` e abra essa URL. Use exatamente o hostname configurado: `localhost` e `127.0.0.1` são origens diferentes.
+
+## Novidades 0.4
+
+Oito insígnias gratuitas, conquistas com progresso, recompensas únicas em Faíscas e vitrine com até três insígnias no perfil. Coleção e filtro de resgates disponíveis, com atalho na loja. Veja [o guia de insígnias](docs/UPDATE-0.4.md).
 
 ## Novidades 0.3
 

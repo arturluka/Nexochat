@@ -1,5 +1,11 @@
 # Validação executada
 
+## Atualização 0.4
+
+Build TypeScript/Vite e integração passaram. Foram verificados resgate concorrente da mesma conquista (um crédito apenas), rejeição de requisito incompleto, seleção de insígnia desconhecida/não conquistada, IDs repetidos, limite de três, ordem de exibição, persistência após reaplicar migrations, vitrine pública e preservação da coleção após ocultar insígnias.
+
+O teste de navegador também passou: resgatar Primeiro Nexo, creditar Faíscas, exibir no perfil, verificar estado salvo e renderizar a página no desktop e em largura de 390 px sem overflow horizontal. Os fluxos anteriores de loja, perfil, mensagens e chamadas foram executados novamente. Mídia física e redes externas continuam fora da validação automatizada.
+
 ## Atualização 0.3
 
 Build e testes de integração passaram. O teste de navegador passou com duas contas e um terceiro dispositivo na mesma conta. Foram verificados: convite recebido e aceito antes de abrir o microfone; recusa/cancelamento e histórico via API; rejeição de resposta por terceiro; resgate diário simultâneo com apenas um crédito; compra simultânea com apenas um débito; rejeição de preço forjado e moldura não adquirida; reaplicação da migration sem perder a carteira; compra/equipamento pela interface e ausência de overflow no celular; habilitação explícita de áudio entre dispositivos da mesma conta.
