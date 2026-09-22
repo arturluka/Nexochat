@@ -2,11 +2,11 @@
 
 ## Componentes
 
-React/Vite serve a interface. Express recebe comandos HTTP; Socket.IO em transporte WebSocket informa alterações, presença, digitação, leitura e sinalização. Mensagens são gravadas antes de notificar clientes; reconexão recarrega o histórico persistido. A sinalização SDP/ICE não é persistida. O áudio/vídeo trafega por WebRTC entre os navegadores ou pelo TURN configurado.
+React/Vite serve a interface. Express recebe comandos HTTP; Socket.IO em transporte WebSocket informa alterações, presença, digitação, leitura e sinalização. Mensagens são gravadas antes de notificar clientes; reconexão recarrega o histórico persistido. A sinalização SDP/ICE não é persistida. O áudio/vídeo trafega por WebRTC entre os navegadores ou pelo TURN configurado. Cada conexão negocia quatro transceivers sendrecv fixos (microfone, câmera, vídeo de tela, áudio de tela), mesmo quando entra sem dispositivos. Somente o recém-chegado oferece; o participante existente responde. Alternar dispositivos usa replaceTrack, preservando a conexão e separando câmera de tela.
 
 O banco usa tabelas relacionais com chaves estrangeiras e índices para identidade, sessões, relações, comunidades/cargos, salas, mensagens, reações e notificações. PGlite executa PostgreSQL embutido para desenvolvimento; o adaptador `pg` utiliza PostgreSQL dedicado com o mesmo SQL. O esquema inicial é uma migration idempotente com registro de versão; mudanças futuras devem criar novas migrations versionadas, sem editar retroativamente dados existentes.
 
-Cada requisição autenticada valida a sessão. `access` e `serverAccess` centralizam acesso e permissões; eventos de sinalização exigem que ambos os sockets estejam na mesma chamada autorizada. Revogação de sessão desconecta os sockets associados; acesso das chamadas é revalidado em eventos e na manutenção periódica. O limite de seis participantes reduz o custo de mesh para esta fase.
+Cada requisição autenticada valida a sessão. `access` e `serverAccess` centralizam acesso e permissões; eventos de sinalização exigem que ambos os sockets estejam na mesma chamada autorizada. Revogação de sessão desconecta os sockets associados; acesso das chamadas é revalidado em eventos e na manutenção periódica. O limite de seis dispositivos reduz o custo de mesh para esta fase. Cada conta pode usar mais de um dispositivo. Estados de microfone, câmera, tela e áudio são validados e propagados pelo servidor; a identidade de quem sinaliza vem da sessão, nunca de um campo fornecido pelo cliente. Operações de entrada/saída são serializadas para que entradas simultâneas se enxerguem.
 
 O evento global `refresh` não contém dados de usuário: os clientes buscam apenas os dados autorizados por HTTP. É simples e apropriado a grupos pequenos, mas não é uma arquitetura para grande escala. Presença deriva das conexões atuais e respeita invisibilidade/bloqueios no estado enviado a cada usuário. Não há Redis, filas, sharding ou distribuição de presença.
 
@@ -45,3 +45,7 @@ SFU/TURN com credenciais temporárias; mensagens/eventos incrementais; filas e p
 - [Socket.IO: autenticação por middleware](https://socket.io/docs/v4/middlewares/)
 - [MDN: negociação WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Perfect_negotiation)
 - [MDN: compartilhamento de tela](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Capture_API/Using_Screen_Capture)
+
+## Atualização 0.2
+
+A migration 002 adiciona campos de perfil sem apagar contas ou mensagens e é registrada na tabela migrations. Avatares/banners só aceitam uploads de imagem pertencentes à própria conta. O navegador oferece uma prévia local antes de salvar; URLs temporárias são revogadas ao trocar a seleção ou fechar o editor.

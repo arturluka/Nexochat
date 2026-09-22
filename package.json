@@ -1,1 +1,24 @@
-{"name":"nexochat","private":true,"version":"0.1.0","type":"module","workspaces":["apps/*","packages/*"],"scripts":{"dev":"concurrently -k -n api,web \"npm run dev -w @nexo/api\" \"npm run dev -w @nexo/web\"","build":"npm run build --workspaces --if-present","typecheck":"npm run typecheck --workspaces --if-present","start":"npm run start -w @nexo/api","test":"npm run test -w @nexo/api","db:migrate":"npm run migrate -w @nexo/api","db:seed":"npm run seed -w @nexo/api"},"devDependencies":{"concurrently":"^9.2.1","typescript":"^5.9.3"}}
+{
+  "name": "nexochat",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm run dev -w @nexo/api\" \"npm run dev -w @nexo/web\"",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "start": "npm run start -w @nexo/api",
+    "test": "npm run test -w @nexo/api",
+    "db:migrate": "npm run migrate -w @nexo/api",
+    "db:seed": "npm run seed -w @nexo/api",
+    "test:browser": "node tests/browser.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.3"
+  }
+}

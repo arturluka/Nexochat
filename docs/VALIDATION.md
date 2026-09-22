@@ -1,5 +1,26 @@
 # Validação executada
 
+## Atualização 0.2 — resultado final
+
+`npm run build` e `npm test` passaram após a atualização. `node tests/browser.mjs` passou com duas contas e um terceiro contexto de navegador usando a mesma conta, em viewport de celular.
+
+Cobertura nova:
+
+- Migration 002 aplicada e reaplicada sem apagar usuários; campos de perfil persistidos.
+- Validação de cor e limites de texto; rejeição de banner pertencente a outra conta; autorização e remoção de imagem pública.
+- Prévia e salvamento de nome, bio, pronomes, status, cor, avatar e banner; interface desktop e mobile sem overflow horizontal.
+- Áudio e vídeo WebRTC recebidos e decodificados; câmera e tela simultâneas; parar e reiniciar a tela sem interromper a câmera, e vice-versa.
+- `NotFoundError` e `NotAllowedError` no microfone mantêm a pessoa como ouvinte; recebimento de áudio sem microfone; ativação tardia do microfone durante a mesma conexão.
+- Cancelar o seletor de tela mantém a chamada; todas as tracks capturadas são encerradas ao sair.
+- Modos Só ouvir e PC + celular não chamam getUserMedia para áudio; duas sessões da mesma conta entram juntas, tela do PC chega ao celular e ao amigo, áudio da própria conta é silenciado e sair do PC preserva as outras sessões.
+- Estado de mídia validado pelo servidor, identidade obtida da sessão e eventos antigos de saída ignorados.
+
+**Limite dos testes de mídia:** microfone/câmera são dispositivos simulados pelo Edge; a captura de tela usa um canvas sintético no lugar do seletor nativo. O transporte e a decodificação são WebRTC reais. Não foram testados um celular físico, áudio de sistema/aba capturado pelo seletor nativo, redes distintas/TURN, Safari/iOS ou TLS do seu Railway. O deploy remoto continua sendo uma etapa do usuário.
+
+Capturas da atualização: [perfil desktop](screenshots/profile-desktop.png), [perfil mobile](screenshots/profile-mobile.png), [entrada na chamada](screenshots/call-lobby.png).
+
+## Registro da versão 0.1
+
 Data: 21/09/2026. Ambiente: Windows, Node.js 24.19.0, Edge headless, banco PostgreSQL embutido PGlite.
 
 ## Resultados

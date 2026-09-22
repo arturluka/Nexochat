@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -18,6 +19,11 @@ test('contas, sessões, amizades, mensagens, uploads, permissões e sinalizaçã
   await req('duplicate','/auth/register','POST',{username:'alice',password:'A-strong-password-123'},409);
   await req('bad','/auth/login','POST',{username:'alice',password:'incorrect-password'},401);
   const alice=(await req('alice','/state')).me,bob=(await req('bobby','/state')).me,carol=(await req('carol','/state')).me;
+  await req('alice','/profile','PATCH',{...alice,display_name:'Alice Nova',accent_color:'#76d9b1',pronouns:'ela/dela',custom_status:'Jogando com amigos'});
+  let profile=(await req('alice','/state')).me;assert.equal(profile.accent_color,'#76d9b1');assert.equal(profile.pronouns,'ela/dela');
+  await req('alice','/profile','PATCH',{...profile,accent_color:'url(javascript:bad)'},400);
+  await req('alice','/profile','PATCH',{...profile,custom_status:'x'.repeat(101)},400);
+  await migrate(db);assert.equal((await req('alice','/state')).me.custom_status,'Jogando com amigos');assert.equal((await db.query('SELECT version FROM migrations WHERE version=2')).length,1);
   const csrf=await fetch(base+'/api/profile',{method:'PATCH',headers:{Cookie:cookies.alice,'Content-Type':'application/json'},body:'{}'});assert.equal(csrf.status,403);
   await req('alice','/rooms','POST',{kind:'dm',name:'Bob',users:['bobby']},403);
   await req('alice','/friends','POST',{username:'bobby'});await req('bobby','/friends/'+alice.id+'/accept','POST');
@@ -32,6 +38,12 @@ test('contas, sessões, amizades, mensagens, uploads, permissões e sinalizaçã
   const badFile=new FormData();badFile.append('file',new Blob(['<script>alert(1)</script>'],{type:'image/png'}),'fake.png');await req('alice','/upload?room='+dm.id,'POST',badFile,400);
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z4Z8AAAAASUVORK5CYII=','base64');const form=new FormData();form.append('file',new Blob([png],{type:'image/png'}),'pixel.png');const attachment=await req('alice','/upload?room='+dm.id,'POST',form);await req('alice','/rooms/'+dm.id+'/messages','POST',{body:'imagem',attachment_id:attachment.id});const forbidden=await fetch(base+'/api/files/'+attachment.id,{headers:{Cookie:cookies.carol}});assert.equal(forbidden.status,403);
   const served=await fetch(base+'/api/files/'+attachment.id,{headers:{Cookie:cookies.bobby}});assert.equal(served.status,200);assert.equal(served.headers.get('content-type'),'image/png');
+  const assetForm=new FormData();assetForm.append('file',new Blob([png],{type:'image/png'}),'profile.png');const asset=await req('alice','/upload','POST',assetForm);
+  await req('bobby','/profile','PATCH',{...bob,banner_id:asset.id},400);
+  await req('alice','/profile','PATCH',{...(await req('alice','/state')).me,banner_id:asset.id});
+  assert.equal((await fetch(base+'/api/files/'+asset.id,{headers:{Cookie:cookies.bobby}})).status,200);
+  await req('alice','/profile','PATCH',{...(await req('alice','/state')).me,banner_id:null});
+  assert.equal((await fetch(base+'/api/files/'+asset.id,{headers:{Cookie:cookies.bobby}})).status,403);
   const group=await req('alice','/rooms','POST',{kind:'group',name:'Turma',users:['bobby']});await req('alice','/rooms/'+group.id,'PATCH',{name:'Turma nova'});await req('bobby','/rooms/'+group.id,'PATCH',{name:'invadida'},403);
   const temporary=await req('alice','/rooms','POST',{kind:'temporary',name:'Hoje',users:['bobby']});assert.ok((await req('alice','/state')).rooms.find((r:any)=>r.id===temporary.id).expires_at);
   const community=await req('alice','/servers','POST',{name:'Nexo Clube'});const invite=await req('alice','/servers/'+community.id+'/invites','POST');await req('bobby','/invites/'+invite.code+'/join','POST');
@@ -40,7 +52,10 @@ test('contas, sessões, amizades, mensagens, uploads, permissões e sinalizaçã
   await req('alice','/servers/'+community.id+'/roles','POST',{name:'Leitor',permissions:[]});const manage=await req('alice','/servers/'+community.id+'/manage');await req('alice','/servers/'+community.id+'/members/'+bob.id,'PATCH',{action:'role',role_id:manage.roles[0].id});await req('bobby','/rooms/'+channel.id+'/messages','POST',{body:'não permitido'},403);
   await req('alice','/servers/'+community.id+'/members/'+bob.id,'PATCH',{action:'role',role_id:null});await req('bobby','/rooms/'+channel.id+'/messages','POST',{body:'permitido'});
   const joinA=await event(sa,'call-join',{room:dm.id}),joinB=await event(sb,'call-join',{room:dm.id});assert.equal(joinA.ok,true);assert.equal(joinB.peers[0].id,sa.id);
-  const signal=new Promise<any>(resolve=>sa.once('signal',resolve));assert.equal((await event(sb,'signal',{to:sa.id,description:{type:'offer',sdp:'test-sdp'}})).ok,true);assert.equal((await signal).description.sdp,'test-sdp');await event(sb,'call-leave',{});assert.equal((await event(sb,'signal',{to:sa.id,description:{type:'offer',sdp:'test'}})).ok,false);
+  await event(sa,'call-leave',{room:dm.id,token:randomUUID()});
+  assert.equal((await event(sa,'call-state',{mic:false,camera:false,screen:true,screenAudio:false,deaf:true})).ok,true);
+  assert.equal((await event(sa,'call-state',{mic:'bad'})).ok,false);
+  const signal=new Promise<any>(resolve=>sa.once('signal',resolve));assert.equal((await event(sb,'signal',{to:sa.id,description:{type:'offer',sdp:'test-sdp'}})).ok,true);const incoming=await signal;assert.equal(incoming.description.sdp,'test-sdp');assert.equal(incoming.user_id,bob.id);await event(sb,'call-leave',{});assert.equal((await event(sb,'signal',{to:sa.id,description:{type:'offer',sdp:'test'}})).ok,false);
   await req('alice','/servers/'+community.id+'/members/'+bob.id,'PATCH',{action:'ban'});await req('bobby','/rooms/'+channel.id+'/messages','GET',undefined,403);await req('bobby','/invites/'+invite.code+'/join','POST',undefined,403);
   await req('alice','/messages/'+m.id,'DELETE');assert.equal((await req('alice','/rooms/'+dm.id+'/messages')).messages.find((x:any)=>x.id===m.id).deleted,true);
   await req('alice','/blocks/'+bob.id,'POST');await req('bobby','/rooms/'+dm.id+'/messages','POST',{body:'bloqueado'},403);await req('alice','/blocks/'+bob.id,'DELETE');

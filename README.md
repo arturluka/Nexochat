@@ -1,4 +1,4 @@
-# NexoChat
+# NexoChat 0.2
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
@@ -20,6 +20,16 @@ No macOS/Linux, substitua `Copy-Item .env.example .env` por `cp .env.example .en
 Abra **http://localhost:5173**. Crie uma conta, abra outro navegador ou perfil privado e crie a segunda conta. Adicione o username em **Adicionar amigo**, aceite a solicitação na segunda conta e abra uma conversa. A senha deve ter pelo menos 10 caracteres; usernames aceitam 3–24 letras minúsculas, números e `_`.
 
 Sem `DATABASE_URL`, o aplicativo usa **PGlite**, uma distribuição embutida do PostgreSQL, persistida em `data/postgres`. É o modo mais fácil de testar sem instalar um servidor de banco. Execute somente uma instância da API para esse diretório. O banco local e os anexos não são enviados a um serviço externo.
+
+## Usar celular para falar e PC para transmitir
+
+1. Entre na **mesma conta e conversa** nos dois dispositivos.
+2. No celular, entre com **Conversar** e permita o microfone.
+3. No PC, escolha **Usar PC com celular**. O PC entra com microfone e áudio desligados para evitar eco.
+4. No PC, clique em **Compartilhar tela** e escolha uma janela, aba ou tela inteira.
+5. A transmissão do PC e a voz do celular aparecem para os amigos. Sair em um dispositivo mantém o outro conectado.
+
+O áudio da própria conta recebido de outro dispositivo fica silenciado automaticamente. Cada dispositivo ocupa uma das seis vagas. Para ouvir diretamente no PC sem celular, escolha **Só ouvir**. A qualidade selecionada (720p ou 1080p, até 30 fps) é uma preferência, sujeita à rede e ao navegador.
 
 ## PostgreSQL dedicado
 
@@ -62,14 +72,14 @@ Para usar `npm start` localmente, rode `npm run build`, configure `APP_ORIGIN=ht
 ## Recursos implementados
 
 - Cadastro, login, logout, username único normalizado; Argon2id; cookies HttpOnly/SameSite; sessões revogáveis de 30 dias, com token aleatório armazenado apenas como hash.
-- Perfil, avatar (até 2 MB), bio, online/ausente/ocupado/invisível; privacidade para novas conversas e confirmação de leitura.
+- Editor de perfil com prévia ao vivo, avatar e banner (até 2 MB cada, incluindo GIF), cor personalizada, pronomes, status personalizado, bio, online/ausente/ocupado/invisível; privacidade para novas conversas e confirmação de leitura.
 - Solicitações de amizade, aceitar/recusar/cancelar/remover; busca por username, bloqueio/desbloqueio.
 - DMs, grupos privados até 16 membros; adicionar/remover membros e renomear grupo pelo dono.
 - Comunidades, categorias, canais de texto/voz, convites de 7 dias e até 25 usos; cargos com permissões; banimento, expulsão, desbanimento e registro de moderação.
 - Mensagens persistentes, edição pelo autor, exclusão pelo autor/moderador, respostas, seis reações, paginação, busca no histórico carregado, digitação e leitura.
 - Anexos autenticados de até 10 MB, validação por assinatura e formatos permitidos; nomes de arquivo não controlam o caminho no disco.
 - Notificações internas de DMs/grupos, amizades e menções `@username`; silenciar conversas.
-- Voz, câmera e compartilhamento de tela com sinalização autorizada; chamadas mesh para até 6 participantes, mute/deafen, troca de microfone e escolha de câmera.
+- Voz, câmera e compartilhamento de tela com sinalização autorizada; chamadas mesh para até 6 dispositivos, entrada só para ouvir ou PC + celular, fallback sem microfone, câmera e tela simultâneas, mute/deafen, volume individual, troca de microfone e escolha de câmera/saída de áudio quando suportada.
 - Salas temporárias de 24 horas. Acesso expira no horário definido; histórico é removido pela manutenção periódica.
 - Limites de requisições, tentativas de login, mensagens, uploads e eventos de socket; validação Zod, SQL parametrizado, cabeçalhos de segurança e verificação de origem nas mutações e sockets.
 
@@ -79,7 +89,7 @@ Bloqueios impedem DMs e novas chamadas com a pessoa, ocultam suas mensagens em e
 
 ## Chamadas
 
-Entre na mesma conversa nas duas contas e clique no telefone em ambas. Permita o microfone; câmera e tela são ativadas pelos controles da chamada. Não há discagem com toque, convite de chamada ou chamada em segundo plano nesta MVP. A saída de áudio é escolhida no sistema operacional. O compartilhamento transmite vídeo, sem áudio da tela.
+Entre na mesma conversa e clique no telefone. Escolha **Conversar**, **Só ouvir** ou **Usar PC com celular**. O modo Conversar tenta abrir o microfone; se ele estiver ausente ou a permissão for negada, você permanece ouvindo. Os outros dois modos não pedem microfone. Câmera e tela podem ser ligadas separadamente, ao mesmo tempo. Não há discagem com toque, convite de chamada ou chamada em segundo plano nesta MVP. A saída de áudio pode ser escolhida nas configurações quando o navegador oferece suporte; caso contrário, use o sistema operacional. A opção de áudio da tela depende do navegador, da origem capturada e da marcação de “Compartilhar áudio” no seletor nativo.
 
 Localhost é um contexto seguro para o navegador. Em outros dispositivos, microfone/câmera/tela exigem **HTTPS**. Para redes diferentes, configure um serviço **TURN** seu; STUN sozinho não garante conexão em todos os roteadores. Exemplo:
 
