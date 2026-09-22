@@ -1,5 +1,15 @@
 # Validação executada
 
+## Atualização 0.5
+
+Build e verificação TypeScript passaram. As duas suítes de integração passaram: recursos anteriores e novos fluxos de enquetes (voto único concorrente, retirada, encerramento), eventos/presença, favoritos privados, fixados, mídia da comunidade, denúncia e resolução, modo lento, duplicação de mensagem, timeout e preferências visuais.
+
+Os testes de canais privados verificaram listagem, mensagens, anexos, favoritos e chamada após retirar o cargo. Migrations foram reaplicadas preservando dados. O limite de mídia é protegido por transação; limites de leitura e escrita por usuário foram separados do limite geral por IP para permitir atualização simultânea da interface sem remover a proteção de envio.
+
+Os dois testes de navegador passaram. Foram exercitados os fluxos anteriores de chamada, microfone ausente, câmera/tela e PC + celular; teste local de microfone e destaque de transmissão; enquetes com duas contas, voto e encerramento; favoritos/fixados; evento com confirmação de presença; upload e envio de emoji/figurinha; configuração de canal privado/modo lento; salvamento do tema e banner; desktop e viewport de 390 px sem overflow horizontal.
+
+Foram corrigidos durante a validação: abas comprimidas no painel, nomes acessíveis dos seletores, abertura do seletor antes de carregar os itens e o limite de requisições que contava atualizações automáticas como uso excessivo. Banco de teste PGlite descartável; mídia simulada com transporte WebRTC real. PostgreSQL dedicado, celular físico, Safari/iOS, TURN e publicação no Railway não foram validados nesta rodada.
+
 ## Atualização 0.4
 
 Build TypeScript/Vite e integração passaram. Foram verificados resgate concorrente da mesma conquista (um crédito apenas), rejeição de requisito incompleto, seleção de insígnia desconhecida/não conquistada, IDs repetidos, limite de três, ordem de exibição, persistência após reaplicar migrations, vitrine pública e preservação da coleção após ocultar insígnias.
@@ -67,3 +77,14 @@ O teste de navegador usa o canal `msedge`, porta local 3101 e banco descartável
 
 ![Desktop](screenshots/desktop.png)
 ![Mobile](screenshots/mobile.png)
+
+## Versão 0.6 — validação local
+
+- Compilação TypeScript e Vite concluída.
+- Três testes de integração de API: fundação, recursos 0.5 e recursos 0.6. O teste 0.6 cobre TOTP e rejeição de reutilização, códigos de recuperação consumidos uma vez, revogação de sessões, busca com restrições, tópicos, encerramento, envio agendado único, cancelamento, bloqueio antes do envio, mídia de voz, perfil local, acessibilidade, recompensa semanal única e backup criptografado com restauração de dados/anexos em banco vazio.
+- Três cenários de navegador Edge passaram: `browser.mjs`, `community-browser.mjs` e `everyday-browser.mjs`.
+- O cenário 0.6 gravou e reproduziu áudio com MediaRecorder, verificou encerramento das faixas do microfone, criou/respondeu tópico, buscou resposta no histórico, agendou/cancelou envio, gerou códigos de recuperação, salvou acessibilidade, abriu convite por link e exibiu apelido por comunidade.
+- Capturas desktop e mobile da versão 0.6 inspecionadas; sem transbordamento horizontal na largura de 390 px.
+- Os testes de chamadas anteriores passaram novamente com mídia simulada: câmera+tela, PC+celular na mesma conta, listener e ausência de microfone.
+
+Não validado em aparelho físico, Safari ou PostgreSQL externo. Nada foi publicado no Railway por estes testes. A versão permanece sem E2EE.

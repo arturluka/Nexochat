@@ -1,7 +1,7 @@
 {
   "name": "nexochat",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.6.0",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -15,7 +15,9 @@
     "test": "npm run test -w @nexo/api",
     "db:migrate": "npm run migrate -w @nexo/api",
     "db:seed": "npm run seed -w @nexo/api",
-    "test:browser": "node tests/browser.mjs"
+    "test:browser": "node tests/browser.mjs && node tests/community-browser.mjs && node tests/everyday-browser.mjs",
+    "backup:create": "tsx apps/api/src/backup.ts create",
+    "backup:restore": "tsx apps/api/src/backup.ts restore"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

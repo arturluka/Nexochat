@@ -1,0 +1,15 @@
+BEGIN;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS accessibility jsonb NOT NULL DEFAULT '{"font_size":16,"contrast":false,"reduce_motion":false}';
+CREATE TABLE account_security(user_id uuid PRIMARY KEY REFERENCES users ON DELETE CASCADE, totp_secret text, pending_secret text, pending_until timestamptz, last_counter bigint NOT NULL DEFAULT -1);
+CREATE TABLE recovery_codes(user_id uuid REFERENCES users ON DELETE CASCADE, code_hash text NOT NULL UNIQUE, PRIMARY KEY(user_id,code_hash));
+ALTER TABLE server_members ADD COLUMN nickname text NOT NULL DEFAULT '';
+ALTER TABLE server_members ADD COLUMN bio text NOT NULL DEFAULT '';
+ALTER TABLE server_members ADD COLUMN avatar_id uuid REFERENCES attachments ON DELETE SET NULL;
+CREATE TABLE threads(id uuid PRIMARY KEY REFERENCES messages ON DELETE CASCADE,title text NOT NULL,closed boolean NOT NULL DEFAULT false);
+ALTER TABLE messages ADD COLUMN thread_id uuid REFERENCES threads ON DELETE CASCADE;
+CREATE INDEX messages_thread ON messages(thread_id,created_at);
+CREATE TABLE scheduled_messages(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES users ON DELETE CASCADE,room_id uuid NOT NULL REFERENCES rooms ON DELETE CASCADE,body text NOT NULL,send_at timestamptz NOT NULL,status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','sent','failed','cancelled')),error text,created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX scheduled_due ON scheduled_messages(send_at) WHERE status='pending';
+CREATE TABLE weekly_claims(user_id uuid REFERENCES users ON DELETE CASCADE,week date NOT NULL,quest text NOT NULL,PRIMARY KEY(user_id,week,quest));
+INSERT INTO migrations(version) VALUES(6);
+COMMIT;

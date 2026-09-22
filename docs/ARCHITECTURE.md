@@ -37,7 +37,7 @@ Fase de implementação proposta:
 
 ## Fases seguintes
 
-SFU/TURN com credenciais temporárias; mensagens/eventos incrementais; filas e push; bots com permissões próprias; apps nativos; verificação de email/recuperação de senha/2FA; quotas e antivírus; moderação/reportes; acessibilidade aprimorada de diálogos; backup/restauração; CI com PostgreSQL dedicado; testes de rede e carga; E2EE auditada.
+SFU/TURN com credenciais temporárias; mensagens/eventos incrementais; filas e push; bots com permissões próprias; apps nativos; verificação de email/recuperação de senha/2FA; quotas e antivírus; moderação automatizada avançada; acessibilidade aprimorada de diálogos; backup/restauração; CI com PostgreSQL dedicado; testes de rede e carga; E2EE auditada.
 
 ## Referências técnicas
 
@@ -49,3 +49,15 @@ SFU/TURN com credenciais temporárias; mensagens/eventos incrementais; filas e p
 ## Atualização 0.2
 
 A migration 002 adiciona campos de perfil sem apagar contas ou mensagens e é registrada na tabela migrations. Avatares/banners só aceitam uploads de imagem pertencentes à própria conta. O navegador oferece uma prévia local antes de salvar; URLs temporárias são revogadas ao trocar a seleção ou fechar o editor.
+
+## Atualização 0.5
+
+A migration 005 adiciona enquetes/votos, favoritos/fixados, eventos/presença, mídia da comunidade, denúncias, timeout, regras de acesso por cargo e preferências visuais. Enquetes e cadastro de mídia usam transações para preservar limites e unicidade. O acesso a canais privados é conferido na API, arquivos, chamadas e listagens. Votos e presença expõem totais/participantes apenas no espaço autorizado. Favoritos são privados. O indicador de fala analisa áudio recebido localmente no navegador; não cria gravações. Consulte UPDATE-0.5.md para limites e permissões.
+
+## Arquitetura da versão 0.6
+
+`security.ts` usa OTPAuth para TOTP padrão, janela de um passo e contador persistido contra reutilização. Códigos de recuperação têm 160 bits aleatórios e somente seus hashes SHA-256 ficam no banco; consumo, recuperação e invalidação de sessões são transacionais. A configuração e alterações exigem senha atual e, quando habilitado, segundo fator. As rotas de segurança têm limitação própria.
+
+`everyday.ts` concentra busca, tópicos, agendamentos, perfis locais e missões. A busca primeiro determina conversas acessíveis; a consulta paginada aplica bloqueios. Agendamentos são registros persistentes, com processamento serial por instância e bloqueio de linha no banco; mensagem e estado enviado são confirmados na mesma transação. A notificação é posterior ao commit, portanto uma queda pode deixar uma mensagem entregue sem notificação, mas não duplica o conteúdo. Não há promessa de pontualidade enquanto a instalação está offline.
+
+`backup.ts` usa AES-256-GCM e scrypt das APIs do Node, não implementa criptografia própria de mensagens. A restauração aceita apenas tabelas e colunas conhecidas, usa transação e recusa banco ocupado. O operador deve parar o serviço para capturar banco e uploads de modo consistente. O formato é voltado a instalações pequenas e não substitui snapshots/backup operacional de grandes bancos PostgreSQL.

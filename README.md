@@ -1,4 +1,4 @@
-# NexoChat 0.4
+# NexoChat 0.6
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
@@ -64,10 +64,14 @@ São criadas as contas `aurora` e `leo`, com a senha escolhida. O seed não subs
 | `npm start` | API e interface compilada no mesmo processo, porta 3001 |
 | `npm test` | Integração real da API com banco PostgreSQL embutido descartável |
 | `npm run typecheck` | Verificar os tipos de ambos os aplicativos |
-| `npm run db:migrate` | Aplicar o esquema inicial |
+| `npm run db:migrate` | Aplicar migrations pendentes |
 | `npm run db:seed` | Criar duas contas opcionais |
 
 Para usar `npm start` localmente, rode `npm run build`, configure `APP_ORIGIN=http://localhost:3001` e abra essa URL. Use exatamente o hostname configurado: `localhost` e `127.0.0.1` são origens diferentes.
+
+## Novidades 0.5
+
+Enquetes, eventos com confirmação de presença, favoritos e mensagens fixadas, emojis/figurinhas da comunidade, canais privados por cargo, modo lento, denúncias e timeout. Cinco temas, cores de nome, estilos de banner e melhorias nas chamadas. Veja [como usar e atualizar](docs/UPDATE-0.5.md).
 
 ## Novidades 0.4
 
@@ -91,9 +95,9 @@ Loja com seis molduras, carteira de Faíscas, resgate diário grátis, coleção
 - Salas temporárias de 24 horas. Acesso expira no horário definido; histórico é removido pela manutenção periódica.
 - Limites de requisições, tentativas de login, mensagens, uploads e eventos de socket; validação Zod, SQL parametrizado, cabeçalhos de segurança e verificação de origem nas mutações e sockets.
 
-As permissões são por comunidade: dono com acesso total; membro padrão com envio e convites; cargo personalizado define as permissões da lista. Nesta primeira versão, criar/atribuir cargos fica reservado ao dono, mesmo quando a opção `manage_roles` existe para evolução. Não há canais privados por cargo nem hierarquia complexa. Moderação de membros com cargo também é reservada ao dono.
+As permissões são por comunidade: dono com acesso total; membro padrão com envio e convites; cargo personalizado define as permissões da lista. Nesta primeira versão, criar/atribuir cargos fica reservado ao dono, mesmo quando a opção `manage_roles` existe para evolução. Há canais privados por cargo na versão 0.5; não há hierarquia complexa de múltiplos cargos. Moderação de membros com cargo também é reservada ao dono.
 
-Bloqueios impedem DMs e novas chamadas com a pessoa, ocultam suas mensagens em espaços compartilhados e interrompem conexões existentes para revalidar acesso. As comunidades continuam compartilhadas. Invisível aparece offline para outras pessoas. Silenciar afeta novas notificações, não a entrega das mensagens.
+Bloqueios impedem DMs e novas chamadas com a pessoa, ocultam suas mensagens em espaços compartilhados e interrompem conexões existentes para revalidar acesso. As comunidades continuam compartilhadas; canais privados seguem as permissões do cargo. Invisível aparece offline para outras pessoas. Silenciar afeta novas notificações, não a entrega das mensagens.
 
 ## Chamadas
 
@@ -129,3 +133,10 @@ data/              Persistência local (ignorada pelo Git)
 ```
 
 Leia [arquitetura e limites](docs/ARCHITECTURE.md) e [validação](docs/VALIDATION.md). O código está preparado em módulos para futuras fases, mas bots, push, recuperação de senha por email, 2FA, apps nativos, SFU e E2EE ainda não são implementados.
+
+## Novidades da versão 0.6
+
+Mensagens de voz, busca completa, tópicos, agendamentos, convites por link, perfil por comunidade, missões semanais, acessibilidade, autenticador TOTP, códigos de recuperação e backup protegido por senha.
+
+Veja [instalação da atualização e backup/restauração](docs/UPDATE-0.6.md). Códigos de recuperação precisam ser gerados e guardados antes de perder o acesso. Esta versão não envia e-mails de recuperação e continua sem E2EE.
+
