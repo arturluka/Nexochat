@@ -1,4 +1,4 @@
- # NexoChat 0.7.0
+# NexoChat 0.7.0
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
