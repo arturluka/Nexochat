@@ -7,5 +7,6 @@ export async function migrate(db:DB) {
  if(!(await db.query('SELECT version FROM migrations WHERE version=4')).length) await db.exec(await readFile(new URL('./migrations/004_badges.sql',import.meta.url),'utf8'));
  if(!(await db.query('SELECT version FROM migrations WHERE version=5')).length) await db.exec(await readFile(new URL('./migrations/005_community.sql',import.meta.url),'utf8'));
  if(!(await db.query('SELECT version FROM migrations WHERE version=6')).length) await db.exec(await readFile(new URL('./migrations/006_everyday.sql',import.meta.url),'utf8'));
+ if(!(await db.query('SELECT version FROM migrations WHERE version=7')).length) await db.exec(await readFile(new URL('./migrations/007_community_plus.sql',import.meta.url),'utf8'));
 }
 if (process.argv[1]?.endsWith('migrate.ts')) { const db = await openDb(); await migrate(db); await db.close(); console.log('Migrations aplicadas.'); }

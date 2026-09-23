@@ -7,7 +7,7 @@ async function progress(db:QueryDb,user:string){
  (SELECT CASE WHEN length(trim(bio))>0 AND length(trim(custom_status))>0 THEN 1 ELSE 0 END FROM users WHERE id=$1) AS identity,
  (SELECT count(*) FROM relations WHERE (sender=$1 OR recipient=$1) AND state='accepted') AS friend,
  (SELECT count(*) FROM servers WHERE owner_id=$1) AS community,
- (SELECT count(*) FROM inventory WHERE user_id=$1) AS style,
+ (SELECT count(*) FROM inventory i JOIN shop_items s ON s.id=i.item_id WHERE i.user_id=$1 AND s.kind='frame') AS style,
  (SELECT count(*) FROM daily_rewards WHERE user_id=$1) AS regular,
  (SELECT count(*) FROM call_history WHERE (caller_id=$1 OR recipient_id=$1) AND status='accepted') AS call`,[user]);
  return {...r,arrival:1,collector:r.style};

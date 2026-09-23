@@ -100,3 +100,18 @@ Isso não comprova a resolução no celular físico do usuário nem valida um se
 ## Versão 0.6.2 — instalação
 
 Compilação TypeScript/Vite e teste dedicado `npm run test:install` passaram. O teste conferiu o manifesto pelo navegador, dimensões dos ícones PNG, prompt de instalação simulado consumido uma vez, cancelamento, evento de instalação, instruções iPhone, ausência de transbordamento em 390 px e tela offline. O cache do service worker contém somente offline.html e offline.css; a API não é oferecida offline. A instalação nativa no sistema operacional e aparelhos físicos não foi automatizada. Nenhum deploy foi realizado.
+
+## Versão 0.7 — comunidades e personalização
+
+Compilação TypeScript/Vite passou. Os quatro testes anteriores da API passaram com a migração 007; o teste adicional 0.7 passou com identidade/imagens, regras versionadas, autorização, transferência/saída, cargos comuns e desbloqueados por conquista, fórum/filtros/respostas, notificações, compras e presentes, preferência individual de volume, enquetes/lembretes e backups novos/antigos.
+
+O teste adicional enviou dois pedidos de presente concorrentes: apenas uma entrega e um desconto. Também verificou recusa de presente repetido, de não amigo e após bloqueio, equipamento na categoria correta, ausência de permissão para assumir o dono e conservação das imagens quando o novo dono altera a bio. O lembrete foi processado duas vezes sem duplicar a notificação. Backups 0.7 foram restaurados com os novos dados; conteúdo no formato 0.6 foi aceito com o catálogo novo preservado.
+
+Três cenários de navegador Edge passaram nesta rodada:
+- `browser.mjs`: fluxos existentes de conta/perfil/loja/insígnias e WebRTC com dispositivos simulados, teste de alto-falante, qualidade estimada e volume 37 persistido após sair e reentrar.
+- `community-browser.mjs`: enquetes, eventos/RSVP, imagens da comunidade, permissões, moderação e exclusão pelo dono.
+- `community-plus-browser.mjs`: edição de identidade com uploads, regras e escolha de cargo, fórum com respostas entre duas contas, notificações, enquete/lembrete/RSVP, compra de presente e equipamento persistido, transferência aceita e saída do antigo dono.
+
+Capturas de fórum desktop/mobile e eventos foram inspecionadas. Sem transbordamento horizontal no viewport mobile de 390 px. Os novos testes usam contas e banco descartáveis.
+
+Limites: não houve publicação no GitHub/Railway nesta rodada nem validação em celular físico, Safari, PostgreSQL dedicado ou servidor TURN externo. Os testes WebRTC locais comprovam o fluxo entre navegadores com mídia simulada, não o alto-falante do aparelho do usuário. E2EE e push continuam ausentes.

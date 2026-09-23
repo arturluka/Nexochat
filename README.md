@@ -1,4 +1,4 @@
-# NexoChat 0.6.2
+# NexoChat 0.7.0
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
@@ -132,7 +132,7 @@ docs/              Arquitetura, limites e plano de E2EE
 data/              Persistência local (ignorada pelo Git)
 ```
 
-Leia [arquitetura e limites](docs/ARCHITECTURE.md) e [validação](docs/VALIDATION.md). O código está preparado em módulos para futuras fases, mas bots, push, recuperação de senha por email, 2FA, apps nativos, SFU e E2EE ainda não são implementados.
+Leia [arquitetura e limites](docs/ARCHITECTURE.md) e [validação](docs/VALIDATION.md). O código está preparado em módulos para futuras fases, mas bots, push, recuperação de senha por email, apps nativos, SFU e E2EE ainda não são implementados.
 
 ## Novidades da versão 0.6
 
@@ -146,3 +146,9 @@ Atualização 0.6.1: exclusão de comunidade somente pelo dono e melhorias de re
 
 
 Versão 0.6.2: [instalar no celular e no PC](docs/INSTALL-APP.md), com ícones e botão de instalação.
+
+## Novidades da versão 0.7
+
+Edição completa da comunidade, transferência de dono, saída, boas-vindas/regras, cargos de entrada e conquistas, fóruns, notificações por canal, loja ampliada, presentes, enquetes/lembretes em eventos e volume individual persistido com teste de saída/qualidade da chamada.
+
+Veja [como usar e atualizar no Railway](docs/UPDATE-0.7.md). A migração preserva os dados existentes.

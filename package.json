@@ -1,7 +1,7 @@
 {
   "name": "nexochat",
   "private": true,
-  "version": "0.6.2",
+  "version": "0.7.0",
   "type": "module",
   "workspaces": [
     "apps/*",
@@ -18,7 +18,8 @@
     "test:browser": "node tests/browser.mjs && node tests/community-browser.mjs && node tests/everyday-browser.mjs",
     "backup:create": "tsx apps/api/src/backup.ts create",
     "backup:restore": "tsx apps/api/src/backup.ts restore",
-    "test:install": "node tests/install-browser.mjs"
+    "test:install": "node tests/install-browser.mjs",
+    "test:community-plus": "node tests/community-plus-browser.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
