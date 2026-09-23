@@ -1,4 +1,4 @@
-# NexoChat 0.6
+# NexoChat 0.6.2
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
@@ -140,3 +140,9 @@ Mensagens de voz, busca completa, tópicos, agendamentos, convites por link, per
 
 Veja [instalação da atualização e backup/restauração](docs/UPDATE-0.6.md). Códigos de recuperação precisam ser gerados e guardados antes de perder o acesso. Esta versão não envia e-mails de recuperação e continua sem E2EE.
 
+
+
+Atualização 0.6.1: exclusão de comunidade somente pelo dono e melhorias de reprodução/diagnóstico de áudio. Veja [o guia](docs/UPDATE-0.6.1.md).
+
+
+Versão 0.6.2: [instalar no celular e no PC](docs/INSTALL-APP.md), com ícones e botão de instalação.

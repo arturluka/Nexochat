@@ -88,3 +88,15 @@ O teste de navegador usa o canal `msedge`, porta local 3101 e banco descartável
 - Os testes de chamadas anteriores passaram novamente com mídia simulada: câmera+tela, PC+celular na mesma conta, listener e ausência de microfone.
 
 Não validado em aparelho físico, Safari ou PostgreSQL externo. Nada foi publicado no Railway por estes testes. A versão permanece sem E2EE.
+
+## Versão 0.6.1
+
+Compilação passou. Quatro testes da API passaram: fundação, recursos 0.6, comunidade com exclusão e configuração RTC. A exclusão foi negada a um membro e a um administrador com todas as permissões; nome incorreto também foi recusado. A exclusão pelo dono removeu dados/anexos vinculados e encerrou a chamada ativa.
+
+Os cenários de navegador de chamadas e comunidade passaram. O teste de chamadas simulou rejeição de autoplay, recuperou a reprodução com Ativar som ao sair de ensurdecido e verificou que o elemento de áudio ficou em reprodução e desmutado. Os fluxos de PC + celular e compartilhamento de tela continuaram passando. O teste da comunidade confirmou o nome e aguardou a comunidade desaparecer da lista.
+
+Isso não comprova a resolução no celular físico do usuário nem valida um serviço TURN externo. O aplicativo agora fornece indicadores para distinguir transporte, reprodução e modos de silêncio. Nenhuma configuração do Railway foi alterada.
+
+## Versão 0.6.2 — instalação
+
+Compilação TypeScript/Vite e teste dedicado `npm run test:install` passaram. O teste conferiu o manifesto pelo navegador, dimensões dos ícones PNG, prompt de instalação simulado consumido uma vez, cancelamento, evento de instalação, instruções iPhone, ausência de transbordamento em 390 px e tela offline. O cache do service worker contém somente offline.html e offline.css; a API não é oferecida offline. A instalação nativa no sistema operacional e aparelhos físicos não foi automatizada. Nenhum deploy foi realizado.
