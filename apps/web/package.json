@@ -1,30 +1,23 @@
 {
-  "name": "nexochat",
+  "name": "@nexo/web",
   "private": true,
-  "version": "0.8.0",
   "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "concurrently -k -n api,web \"npm run dev -w @nexo/api\" \"npm run dev -w @nexo/web\"",
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "start": "npm run start -w @nexo/api",
-    "test": "npm run test -w @nexo/api",
-    "db:migrate": "npm run migrate -w @nexo/api",
-    "db:seed": "npm run seed -w @nexo/api",
-    "test:browser": "node tests/browser.mjs && node tests/community-browser.mjs && node tests/everyday-browser.mjs",
-    "backup:create": "tsx apps/api/src/backup.ts create",
-    "backup:restore": "tsx apps/api/src/backup.ts restore",
-    "test:install": "node tests/install-browser.mjs",
-    "test:community-plus": "node tests/community-plus-browser.mjs",
-    "test:mobile": "node tests/mobile-browser.mjs",
-    "test:personal-space": "node tests/personal-space-browser.mjs"
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "socket.io-client": "^4.8.1",
+    "lucide-react": "^0.468.0"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
-    "typescript": "^5.9.3"
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "vite": "^7.1.12",
+    "@playwright/test": "^1.56.1"
   }
 }
