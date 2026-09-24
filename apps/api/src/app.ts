@@ -98,7 +98,7 @@ export function createApp(db:DB) {
    await security.login(u.id,z.string().max(128).optional().parse(req.body.otp));
    await issueSession(req,res,u);
  }));
- app.get('/api/health',(_req,res)=>res.json({ok:true,version:'0.7.0',database:process.env.DATABASE_URL?'postgresql':'pglite'}));
+ app.get('/api/health',(_req,res)=>res.json({ok:true,version:'0.7.1',database:process.env.DATABASE_URL?'postgresql':'pglite'}));
  app.use('/api',auth);
  app.use('/api',rateLimit({windowMs:60_000,limit:600,keyGenerator:(req)=>(req as AuthRequest).user.id,skip:req=>!['GET','HEAD'].includes(req.method),standardHeaders:'draft-8',legacyHeaders:false,message:{error:'Muitas consultas. Aguarde um minuto.'}}));
  app.use('/api',rateLimit({windowMs:60_000,limit:120,keyGenerator:(req)=>(req as AuthRequest).user.id,skip:req=>['GET','HEAD','OPTIONS'].includes(req.method),standardHeaders:'draft-8',legacyHeaders:false,message:{error:'Muitas ações. Aguarde um minuto.'}}));

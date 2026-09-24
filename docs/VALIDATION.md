@@ -115,3 +115,9 @@ Três cenários de navegador Edge passaram nesta rodada:
 Capturas de fórum desktop/mobile e eventos foram inspecionadas. Sem transbordamento horizontal no viewport mobile de 390 px. Os novos testes usam contas e banco descartáveis.
 
 Limites: não houve publicação no GitHub/Railway nesta rodada nem validação em celular físico, Safari, PostgreSQL dedicado ou servidor TURN externo. Os testes WebRTC locais comprovam o fluxo entre navegadores com mídia simulada, não o alto-falante do aparelho do usuário. E2EE e push continuam ausentes.
+
+## Versão 0.7.1 — gestos mobile
+
+Build TypeScript/Vite passou. O teste `npm run test:mobile` passou no Edge com viewport de 390 px e eventos de toque do navegador: menu por toque longo, favorito salvo, responder, editar mensagem própria, ausência de editar mensagem alheia, cancelar menu ao rolar, abrir/fechar navegação por deslizar, acesso pelo botão de opções, fechamento com Escape e ações desktop preservadas. Layout sem overflow horizontal; menu inferior inspecionado em captura.
+
+O teste identificou e a implementação corrigiu o cancelamento do gesto lateral pelo navegador nos contêineres de rolagem. O gesto agora preserva rolagem vertical e zoom. Não foi validado em aparelho físico ou Safari/iOS. Nenhum deploy foi realizado nesta rodada.

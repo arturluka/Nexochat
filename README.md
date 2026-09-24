@@ -1,4 +1,4 @@
-# NexoChat 0.7.0
+# NexoChat 0.7.1
 
 MVP executável para um pequeno grupo de amigos. Monorepo TypeScript com React 19 + Vite, API Node.js/Express, PostgreSQL, Socket.IO/WebSocket e chamadas WebRTC. Interface própria, responsiva e em português.
 
@@ -152,3 +152,5 @@ Versão 0.6.2: [instalar no celular e no PC](docs/INSTALL-APP.md), com ícones e
 Edição completa da comunidade, transferência de dono, saída, boas-vindas/regras, cargos de entrada e conquistas, fóruns, notificações por canal, loja ampliada, presentes, enquetes/lembretes em eventos e volume individual persistido com teste de saída/qualidade da chamada.
 
 Veja [como usar e atualizar no Railway](docs/UPDATE-0.7.md). A migração preserva os dados existentes.
+
+Atualização 0.7.1: segure uma mensagem no celular para abrir as ações. Deslize da borda esquerda para abrir a navegação e para a esquerda sobre a lista para fechar. Veja [gestos mobile](docs/UPDATE-0.7.1.md).
